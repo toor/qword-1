@@ -20,6 +20,35 @@ struct packet_t *pkt_new(void) {
     return pkt;
 }
 
+int addr_to_raw(char *addr) {
+    int a1, a2, a3, a4;
+
+    a1 = 256 * 256 * 256 * addr[0];
+    a2 = 256 * 256 * addr[1];
+    a3 = 256 * addr[2];
+    a4 = addr[3];
+
+    return a1 + a2 + a3 + a4;
+}
+
+char *raw_to_addr(int raw) {
+    char a, b, c, d;
+
+    /* format: a.b.c.d */
+    d = raw;
+    c = (raw / 256);
+    b = (raw / 65536);
+    a = (raw / 16777216);
+
+    char *addr = kalloc(4 * sizeof(char));
+    addr[0] = (a % 256);
+    addr[1] = (b % 256);
+    addr[2] = (c % 256);
+    addr[3] = (d % 256);
+
+    return addr;
+}
+
 void net_add_nic(struct nic_t *nic) {
     char buffer[2 * 6 + 10] = {0};
 

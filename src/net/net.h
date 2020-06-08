@@ -63,11 +63,13 @@ struct nic_t {
 #define PKT_FLAG_UDP_CS  (1u << 1u)
 #define PKT_FLAG_TCP_CS  (1u << 2u)
 
-/* packet descriptor */
+/* raw packet */
 struct packet_t {
+    /* the nic this packet is to be sent from/to */
     struct nic_t *nic;
     size_t pkt_len;
 
+    /* contains IP datagram */
     char *buf;
 };
 
