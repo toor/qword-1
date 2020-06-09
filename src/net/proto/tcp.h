@@ -41,12 +41,12 @@ struct tcp_hdr_t {
     uint16_t window;
     uint16_t checksum;
     uint16_t urg_ptr;
-    char data[];
+    char *data;
 };
 
 /* construct a tcp header with specified parameters */
-/* TODO: socket stuff */
 void tcp_new(struct socket_descriptor_t *, struct packet_t *, int, const void *, size_t);
-void tcp_send_pkt(struct packet_t *);
+/* send data over a tcp connection */
+void tcp_send(struct socket_descriptor_t *, const void *, size_t, int);
 
 #endif

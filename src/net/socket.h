@@ -20,6 +20,13 @@ enum socket_type {
 enum socket_state {
     STATE_REQ = 0, /* socket created but not yet bound */
     STATE_BOUND, /* socket bound to remote address */
+    STATE_OUT,
+};
+
+enum tcp_state {
+    SYN_SENT,
+    ESTABLISHED,
+    CLOSED,
 };
 
 /* structure that describes all the key info about a socket */
@@ -46,10 +53,11 @@ struct socket_descriptor_t {
         uint32_t ack_sq;
         uint32_t recv_sq;
         uint16_t win_sz;
+        enum tcp_state state;
     } tcp;
 
-    //struct lock_t socket_lock;
-    //struct event_t event;
+    lock_t socket_lock;
+    event_t *event;
 
 
     /* TODO construct queues for udp datagrams, tcp accept() packets, packets to be ack'd, etc. */

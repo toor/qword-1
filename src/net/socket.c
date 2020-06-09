@@ -48,7 +48,7 @@ int socket_new(int domain, int type, int proto) {
     sock->type = type;
     sock->proto = proto;
     sock->state = STATE_REQ;
-    //sock->socket_lock = new_lock;
+    sock->socket_lock = new_lock;
 
     return fd;
 }

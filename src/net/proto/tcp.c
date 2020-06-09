@@ -1,11 +1,14 @@
 #include <stdint.h>
 #include <stddef.h>
+#include <net/socket.h>
 #include <net/proto/tcp.h>
 #include <net/socket.h>
 #include <net/net.h>
 #include <net/proto/ether.h>
 #include <net/proto/ipv4.h>
 #include <lib/cmem.h>
+#include <lib/rand.h>
+#include <lib/klib.h>
 
 /* tcp_new(): construct a new tcp segment from a raw packet */
 void tcp_new(struct socket_descriptor_t *sock, struct packet_t *pkt, int flags,
@@ -57,4 +60,60 @@ void tcp_new(struct socket_descriptor_t *sock, struct packet_t *pkt, int flags,
     /* copy data */
     memcpy(tcp->data, tcp_data, data_len);
     pkt->pkt_len = NTOHS(ipv4_hdr->total_len) + sizeof(struct ether_hdr);
+}
+
+/* send data over tcp connection
+ * to send SYN packet, call with data_len = 0, flags set to TCP_SYN */
+void tcp_send(struct socket_descriptor_t *sock, const void *data, size_t data_len, int flags) {
+    struct packet_t *pkt = pkt_new();
+
+    tcp_new(sock, pkt, flags, data, data_len);
+    net_dispatch_pkt(pkt);
+    /* TODO free allocated packet */
+
+    sock->ip.ipid += 1;
+
+    if (flags & TCP_SYN) {
+        sock->tcp.snd_sq += 1;
+    }
+
+    if  (flags & TCP_FIN) {
+        sock->tcp.snd_sq += 1;
+    }
+
+    sock->tcp.snd_sq += data_len;
+}
+
+/* will be called from connect() - establish a 3-way tcp handshake */
+int tcp_connect(struct socket_descriptor_t *sock, const struct sockaddr_in *addr) {
+    sock->ip.dest_ip = addr->sin_addr.s_addr;
+    sock->ip.dest_port = addr->sin_port;
+    sock->state = STATE_OUT;
+
+    sock->tcp.snd_sq = rand32();
+    sock->tcp.ack_sq = 0;
+    sock->tcp.recv_sq = 0;
+
+    event_t event = 0;
+    sock->event = &event;
+    sock->socket_lock = new_lock;
+
+    tcp_send(sock, NULL, 0, TCP_SYN);
+    sock->tcp.state = SYN_SENT;
+
+    /* we must now block until the state is updated by accept() when we receive an ACK from
+     * the remote host */
+    event_await(&event);
+
+    switch (sock->tcp.state) {
+        case ESTABLISHED:
+           return 0;
+        case CLOSED:
+            return -1;
+        default:
+           kprint(KPRN_WARN,
+                   "net: tcp: connection returned socket in tcp state %d\n. Connection failed.",
+                   sock->tcp.state);
+           return -1;
+    }
 }
