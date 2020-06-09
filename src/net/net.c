@@ -96,14 +96,16 @@ int net_query_mac(ipv4_addr_t addr, mac_addr_t *mac) {
     }
 }
 
-/* dispatch a pre-constructed packet */
+/* net_dispatch_pkt(): send an ipv4 packet */
 int net_dispatch_pkt(struct packet_t *pkt) {
+    /* TODO: check that this is an ip packet */
     struct ipv4_hdr_t *ipv4_hdr = (struct ipv4_hdr_t *)(pkt->buf + sizeof(struct ether_hdr));
 
     struct nic_t *nic = NULL;
     ipv4_addr_t addr;
     addr.raw = ipv4_hdr->dst;
 
+    /* route the packet */
     if (!net_best_nic(addr, &nic)) {
         /* route found */
         mac_addr_t mac = {0};
@@ -120,8 +122,7 @@ int net_dispatch_pkt(struct packet_t *pkt) {
             ether_hdr->dst = mac;
             ether_hdr->type = ETHER_IPV4;
 
-            return 0;
-            /* TODO need to actually send the packet here, but should probs rework some of the nic stuff */
+            return nic->calls.send_packet(nic->internal_fd, pkt->buf, pkt->pkt_len);
         }
 
         return -1;

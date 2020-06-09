@@ -172,7 +172,7 @@ static void rtl81x9_int_handler(struct r81x9_device_t* dev) {
 }
 
 // TODO: maybe a write should be a raw write?
-static int send_packet(int internal_fd, void* pkt, size_t len, uint64_t flags) {
+static int send_packet(int internal_fd, void* pkt, size_t len) {
     panic_unless(len == (len & FRAME_LENGTH_MASK));
 
     // get the card
@@ -200,17 +200,6 @@ static int send_packet(int internal_fd, void* pkt, size_t len, uint64_t flags) {
     desc->opts1 |= (len | OWN | LS | FS);
     desc->opts2 = 0;
     desc->buff = (uintptr_t)pkt - MEM_PHYS_OFFSET;
-
-    // set flags
-    if (flags & PKT_FLAG_IP_CS) {
-        desc->opts1 |= IPCS;
-    }
-    if (flags & PKT_FLAG_UDP_CS) {
-        desc->opts1 |= UDPCS;
-    }
-    if (flags & PKT_FLAG_TCP_CS) {
-        desc->opts1 |= TCPCS;
-    }
 
     // increment to the next packet
     dev->txi++;

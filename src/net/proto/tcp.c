@@ -7,8 +7,7 @@
 #include <net/proto/ipv4.h>
 #include <lib/cmem.h>
 
-/* TODO: the packet stuff is pretty superfluous now, slim down struct packet_t ? */
-/* constructing a tcp segment: ethernet header -> ipv4 header -> tcp header */
+/* tcp_new(): construct a new tcp segment from a raw packet */
 void tcp_new(struct socket_descriptor_t *sock, struct packet_t *pkt, int flags,
         const void *tcp_data, size_t data_len) {
     struct ether_hdr *ether = (struct ether_hdr *)pkt->buf;
@@ -30,7 +29,7 @@ void tcp_new(struct socket_descriptor_t *sock, struct packet_t *pkt, int flags,
     ipv4_hdr->dst = sock->ip.dest_ip;
 
     /* tcp header 20 bytes after start of ipv4_hdr header */
-    struct tcp_hdr_t *tcp = (struct tcp_hdr_t *)((void *)ipv4_hdr  + (ipv4_hdr->head_len * 4));
+    struct tcp_hdr_t *tcp = (struct tcp_hdr_t *)((void *)ipv4_hdr + (ipv4_hdr->head_len * 4));
 
     tcp->source = sock->ip.source_port;
     tcp->dest = sock->ip.dest_port;
@@ -57,6 +56,5 @@ void tcp_new(struct socket_descriptor_t *sock, struct packet_t *pkt, int flags,
 
     /* copy data */
     memcpy(tcp->data, tcp_data, data_len);
-    /* tcpchecksum(pkt) */
-    pkt->pkt_len = NTOHS(ipv4_hdr->total_len);
+    pkt->pkt_len = NTOHS(ipv4_hdr->total_len) + sizeof(struct ether_hdr);
 }

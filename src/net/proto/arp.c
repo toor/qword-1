@@ -6,6 +6,7 @@
 #include <lib/errno.h>
 #include "arp.h"
 
+/* TODO this naming is stupid, why have 3 structs instead of just one */
 struct ipv4_arp_packet_t {
     struct arp_hdr_t hdr;
     struct arp_ipv4_t ipv4;
@@ -74,102 +75,20 @@ static int send_arp_request(struct nic_t *nic, ipv4_addr_t addr, mac_addr_t *mac
     arp_request->ipv4.target_ip = addr;
     arp_request->ipv4.target_mac = (mac_addr_t){ {0} };
 
-    /* le obnoxiously large TODO has arrived
-    // actually send it
-    if (netstack_send_frame(&pkt_req) < 0) {
-        kprint(KPRN_WARN, "arp: error sending arp request %d", errno);
-        return -1;
-    }
+    pkt->pkt_len = sizeof(struct ether_hdr) + sizeof(struct ipv4_arp_packet_t);
+
+    int ret = nic->calls.send_packet(nic->internal_fd, pkt->buf, pkt->pkt_len);
 
     // wait for the result
     event_await(&event);
     arp_query_ipv4(nic, addr, mac);
- */
+
     return 0;
 }
 
 /* this doesn't really work well with redesigned network architecture */
 void arp_process_packet(struct packet_t *pkt) {
-/*    switch (pkt->network.type) {
-        case ARP_OPCODE_REPLY: {
-
-            // add to cache if not in cache
-            if (!is_in_cache(pkt->network.src)) {
-                // add the entry
-                struct arp_entry_t entry = {
-                    .timestamp = unix_epoch,
-                    .ip = pkt->network.src,
-                    .phys = pkt->datalink.src
-                };
-                dynarray_add(struct arp_entry_t, arp_cache, &entry);
-            } else {
-                kprint(KPRN_WARN, "arp: got reply for already existing address, ignoring");
-                return;
-            }
-
-            // got over all related requests and trigger them
-            struct arp_request_t *req = NULL;
-            size_t i = 0;
-            do {
-                req = dynarray_search(struct arp_request_t, arp_requests, &i,
-                                      IPV4_EQUAL(elem->ip, pkt->network.src), i);
-                if (req == NULL) {
-                    break;
-                }
-
-                event_trigger(req->event);
-                dynarray_unref(arp_requests, i);
-                dynarray_remove(arp_requests, i);
-
-            } while (1);
-        } break;
-
-        case ARP_OPCODE_REQUEST: {
-            // check if this is our ip
-            if (IPV4_EQUAL(pkt->nic->ipv4_addr, pkt->network.dst)) {
-                // add the requester as an entry
-                struct arp_entry_t entry = {
-                    .timestamp = unix_epoch,
-                    .ip = pkt->network.src,
-                    .phys = pkt->datalink.src
-                };
-                dynarray_add(struct arp_entry_t, arp_cache, &entry);
-
-                // create the packet
-                // TODO: ugly
-                struct ipv4_arp_packet_t arp_request = {
-                    .hdr = {
-                        .opcode = ARP_OPCODE_REPLY,
-                        .proto_addr_len = sizeof(ipv4_addr_t),
-                        .hw_addr_len = sizeof(mac_addr_t),
-                        .hw_type = ARP_HW_ETHER,
-                        .proto_type = ARP_PROTO_IPV4
-                    },
-                    .ipv4 = {
-                        .sender_ip = pkt->nic->ipv4_addr,
-                        .sender_mac = pkt->nic->mac_addr,
-                        .target_ip = pkt->network.src,
-                        .target_mac = pkt->datalink.src
-                    }
-                };
-
-                // form a proper packet request
-                struct packet_t pkt_req = {
-                    .nic = pkt->nic,
-                    .data = (char *)&arp_request,
-                    .data_len = sizeof(arp_request),
-                    .datalink.type = ETHER_ARP,
-                    .datalink.src = pkt->nic->mac_addr,
-                    .datalink.dst = pkt->datalink.src
-                };
-
-                // actually send it
-                if (netstack_send_frame(&pkt_req) < 0) {
-                    kprint(KPRN_WARN, "arp: error sending arp reply %d", errno);
-                }
-            }
-        } break;
-    } */
+    return;
 }
 
 int arp_query_ipv4(struct nic_t *nic, ipv4_addr_t addr, mac_addr_t *mac) {

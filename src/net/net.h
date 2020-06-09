@@ -37,7 +37,7 @@ typedef union {
 #define NTOH_IPV4(ip) ((ipv4_addr_t){ .raw = NTOHL((ip).raw) })
 
 struct nic_calls_t {
-    int (*send_packet)(int fd, void* packet, size_t length, uint64_t flags);
+    int (*send_packet)(int fd, void *packet, size_t length);
 };
 
 struct nic_t {
