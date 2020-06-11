@@ -59,6 +59,9 @@ struct socket_descriptor_t {
     lock_t socket_lock;
     event_t *event;
 
+    /* list of tcp packets to be accepted */
+    // TODO how does one create dynarrays in structs ? is it possible ?
+    //dynarray_new(struct packet_t, accept_queue);
 
     /* TODO construct queues for udp datagrams, tcp accept() packets, packets to be ack'd, etc. */
     /* should probably figure out how these will be programmed first */

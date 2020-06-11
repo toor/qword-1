@@ -23,7 +23,7 @@ void tcp_new(struct socket_descriptor_t *sock, struct packet_t *pkt, int flags,
     ipv4_hdr->head_len = sizeof(struct ipv4_hdr_t) / 4;
     ipv4_hdr->tos = 0; /* TOS/DSCP: we don't need this */
     /* total size of ip datagram: header + tcp header + tcp data */
-    ipv4_hdr->total_len = sizeof(struct ipv4_hdr_t) + sizeof(struct tcp_hdr_t) + data_len;
+    ipv4_hdr->total_len = HTONS(sizeof(struct ipv4_hdr_t) + sizeof(struct tcp_hdr_t) + data_len);
     ipv4_hdr->id = NTOHS(sock->ip.ipid); /* TODO these capitals look like wank */
     ipv4_hdr->protocol = PROTO_TCP;
     ipv4_hdr->frag_flag = HTONS(IPV4_HEAD_DF_MASK);

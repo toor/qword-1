@@ -14,6 +14,7 @@ static struct nic_t *default_nic;
 
 struct packet_t *pkt_new(void) {
     struct packet_t *pkt = kalloc(sizeof(struct packet_t) + 1536); /* ETH_MTU */
+    pkt->buf = kalloc(1536u);
     pkt->pkt_len = -1;
     pkt->nic = NULL;
 
