@@ -94,6 +94,7 @@ int socket_bind(int, const struct sockaddr *, socklen_t);
 int socket_listen(int, int);
 int socket_accept(int, struct sockaddr *, socklen_t *);
 int socket_conect(int, const struct sockaddr *, socklen_t);
+int socket_send(int, const void *, size_t, int);
 
 public_dynarray_prototype(struct socket_descriptor_t, sockets);
 

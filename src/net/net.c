@@ -21,6 +21,13 @@ struct packet_t *pkt_new(void) {
     return pkt;
 }
 
+void pkt_free(struct packet_t *pkt) {
+    /* check if payload exists */
+    if (pkt->buf)
+        kfree(pkt->buf);
+    kfree((void *)pkt);
+}
+
 int addr_to_raw(char *addr) {
     int a1, a2, a3, a4;
 

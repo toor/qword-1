@@ -40,3 +40,13 @@ void udp_new(struct socket_descriptor_t *sock, struct packet_t *pkt, const void 
 
     /* TODO checksums */
 }
+
+void udp_send(struct socket_descriptor_t *sock, const void *data, size_t len) {
+    struct packet_t *pkt = pkt_new();
+
+    udp_new(sock, pkt, data, len);
+    net_dispatch_pkt(pkt);
+    pkt_free(pkt);
+
+    socket->ip.ipid += 1;
+}

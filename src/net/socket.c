@@ -73,3 +73,16 @@ int socket_bind(int fd, const struct sockaddr *addr, socklen_t addrlen) {
 
     return 0;
 }
+
+int socket_send(int fd, const void *data, size_t data_len, int flags) {
+    struct socket_descriptor_t *sock = socket_from_fd(fd);
+
+    switch (sock->type) {
+        case SOCKET_DGRAM:
+            udp_send(sock, data, data_len);
+        case SOCKET_STREAM:
+            tcp_send(sock, data, data_len, flags);
+    }
+
+    return 0;
+}

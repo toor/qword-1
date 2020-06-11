@@ -65,7 +65,7 @@ struct nic_t {
 
 /* raw packet */
 struct packet_t {
-    /* the nic this packet is to be sent from/to */
+    /* the nic this packet is to be sent from */
     struct nic_t *nic;
     size_t pkt_len;
 
@@ -82,5 +82,6 @@ int net_dispatch_pkt(struct packet_t *);
 int addr_to_raw(char *);
 char *raw_to_addr(int);
 struct packet_t *pkt_new(void);
+void pkt_free(struct packet_t *pkt);
 
 #endif //__NET__NET_H__
