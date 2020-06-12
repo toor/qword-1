@@ -26,6 +26,7 @@ void tcp_new(struct socket_descriptor_t *sock, struct packet_t *pkt, int flags,
     ipv4_hdr->total_len = HTONS(sizeof(struct ipv4_hdr_t) + sizeof(struct tcp_hdr_t) + data_len);
     ipv4_hdr->id = NTOHS(sock->ip.ipid); /* TODO these capitals look like wank */
     ipv4_hdr->protocol = PROTO_TCP;
+    ipv4_hdr->checksum = 0;
     ipv4_hdr->frag_flag = HTONS(IPV4_HEAD_DF_MASK);
     ipv4_hdr->ttl = 64;
     ipv4_hdr->src = sock->ip.source_ip;
@@ -54,12 +55,15 @@ void tcp_new(struct socket_descriptor_t *sock, struct packet_t *pkt, int flags,
     tcp->cwr = (flags & TCP_CWR);
 
     tcp->window = HTONS(0x1000);
-    tcp->checksum = 0; /* TODO how does one do the tcp checksum */
+    tcp->checksum = 0;
     tcp->urg_ptr = 0;
 
     /* copy data */
     memcpy(tcp->data, tcp_data, data_len);
     pkt->pkt_len = NTOHS(ipv4_hdr->total_len) + sizeof(struct ether_hdr);
+
+    ipv4_checksum(pkt);
+    tcp_checksum(pkt);
 }
 
 /* send data over tcp connection

@@ -83,5 +83,8 @@ int addr_to_raw(char *);
 char *raw_to_addr(int);
 struct packet_t *pkt_new(void);
 void pkt_free(struct packet_t *pkt);
+void ipv4_checksum(struct packet_t *pkt);
+void udp_checksum(struct packet_t *pkt);
+void tcp_checksum(struct packet_t *pkt);
 
 #endif //__NET__NET_H__

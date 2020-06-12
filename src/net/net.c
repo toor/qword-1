@@ -4,6 +4,8 @@
 #include <net/proto/ether.h>
 #include <net/proto/ipv4.h>
 #include <net/proto/arp.h>
+#include <net/proto/udp.h>
+#include <net/proto/tcp.h>
 #include <sys/panic.h>
 #include <lib/cmem.h>
 #include <lib/klib.h>
@@ -67,6 +69,113 @@ void net_add_nic(struct nic_t *nic) {
     nic->ipv4_addr.addr[3] = 123;
 
     dynarray_add(struct nic_t *, nics, &nic);
+}
+
+void ipv4_checksum(struct packet_t *pkt) {
+    struct ipv4_hdr_t *ipv4_hdr = (struct ipv4_hdr_t *)(pkt->buf + sizeof(struct ether_hdr));
+
+    uint16_t *words = (uint16_t *)ipv4_hdr;
+    uint32_t sum32 = 0;
+
+    /* iterate over all words in header */
+    for (size_t i = 0; i < ipv4_hdr->head_len * 2; i++)
+        sum32 += words[i];
+
+    /* take one's complement */
+    uint16_t checksum = (sum32 & 0xffff) + (sum32 >> 16);
+    ipv4_hdr->checksum = checksum;
+}
+
+struct udp_pseudohdr_t {
+    uint32_t src_ip;
+    uint32_t dst_ip;
+    uint8_t resv0;
+    uint8_t proto;
+    uint16_t udp_len;
+};
+
+void udp_checksum(struct packet_t *pkt) {
+    struct ipv4_hdr_t *ipv4_hdr = (struct ipv4_hdr_t *)(pkt->buf + sizeof(struct ether_hdr));
+    struct udp_hdr_t *udp = (struct udp_hdr_t *)((void *)ipv4_hdr + ipv4_hdr->head_len * 4);
+
+    int len = NTOHS(ipv4_hdr->total_len);
+    int udp_len = len - sizeof(struct ipv4_hdr_t);
+
+    struct udp_pseudohdr_t p_udp = {
+        .src_ip = ipv4_hdr->src,
+        .dst_ip = ipv4_hdr->dst,
+        .resv0 = 0,
+        .proto = PROTO_UDP,
+        .udp_len = udp_len,
+    };
+
+    uint32_t sum32 = 0;
+    uint16_t *p_words = (uint16_t *)&p_udp;
+
+    for (size_t i = 0; i < sizeof(p_words) / 2; i++)
+        sum32 += p_words[i];
+
+    uint16_t *u_words = (uint16_t *)udp;
+
+    for (size_t i = 0; i < udp_len / 2; i++)
+        sum32 += u_words[i];
+
+    /* account for case where carry-out bit is produced */
+    if (udp_len % 2) {
+        uint16_t l = ((uint8_t *)ipv4_hdr)[len - 1];
+        sum32 += l;
+    }
+
+    while (sum32 >> 16)
+        sum32 = (sum32 & 0xffff) + (sum32 >> 16);
+
+    udp->checksum = ~(uint16_t)sum32;
+}
+
+struct tcp_pseudohdr_t {
+    uint32_t src_ip;
+    uint32_t dst_ip;
+    uint8_t resv0;
+    uint16_t proto;
+    uint16_t tcp_len;
+};
+
+void tcp_checksum(struct packet_t *pkt) {
+    struct ipv4_hdr_t *ipv4_hdr = (struct ipv4_hdr_t *)(pkt->buf + sizeof(struct ether_hdr));
+    struct tcp_hdr_t *tcp = (struct tcp_hdr_t *)((void *)ipv4_hdr + ipv4_hdr->head_len * 4);
+
+    int len = NTOHS(ipv4_hdr->total_len);
+    int tcp_len = len - sizeof(struct ipv4_hdr_t);
+
+    struct tcp_pseudohdr_t p_tcp = {
+        .src_ip = ipv4_hdr->src,
+        .dst_ip = ipv4_hdr->dst,
+        .resv0 = 0,
+        .proto = PROTO_TCP,
+        .tcp_len = tcp_len,
+    };
+
+    uint32_t sum32 = 0;
+    uint16_t *p_words = (uint16_t *)&p_tcp;
+
+    for (size_t i = 0; i < sizeof(p_words) / 2; i++)
+        sum32 += p_words[i];
+
+    uint16_t *t_words = (uint16_t *)tcp;
+
+    for (size_t i = 0; i < tcp_len / 2; i++)
+        sum32 += t_words[i];
+
+    /* account for case where carry-out bit is produced */
+    if (tcp_len % 2) {
+        uint16_t l = ((uint8_t *)ipv4_hdr)[len - 1];
+        sum32 += l;
+    }
+
+    while (sum32 >> 16)
+        sum32 = (sum32 & 0xffff) + (sum32 >> 16);
+
+    tcp->checksum = ~(uint16_t)sum32;
 }
 
 /* route address to host: update `nic` with
