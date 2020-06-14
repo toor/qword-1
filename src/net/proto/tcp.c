@@ -73,7 +73,7 @@ void tcp_send(struct socket_descriptor_t *sock, const void *data, size_t data_le
 
     tcp_new(sock, pkt, flags, data, data_len);
     net_dispatch_pkt(pkt);
-    /* TODO free allocated packet */
+    pkt_free(pkt);
 
     sock->ip.ipid += 1;
 
@@ -102,6 +102,7 @@ int tcp_connect(struct socket_descriptor_t *sock, const struct sockaddr_in *addr
     sock->event = &event;
     sock->socket_lock = new_lock;
 
+    /* actually send the packet */
     tcp_send(sock, NULL, 0, TCP_SYN);
     sock->tcp.state = SYN_SENT;
 

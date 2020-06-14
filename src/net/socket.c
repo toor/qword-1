@@ -24,14 +24,15 @@ struct socket_descriptor_t *socket_from_fd(int fd) {
 /* construct a new socket and return the corresponding file descriptor */
 int socket_new(int domain, int type, int proto) {
     size_t fd = 0;
-    /* find first valid element */
+    /* find first unused element */
     struct socket_descriptor_t *sock = dynarray_search(struct socket_descriptor_t, sockets, &fd,
                                                      !elem->valid, 0);
     if (!sock)
         return -1;
     sock->valid = 1;
 
-    /* TODO validate domain */
+    if (domain != AF_INET)
+        return -1;
 
     switch (type) {
         case SOCKET_DGRAM:
@@ -74,8 +75,12 @@ int socket_bind(int fd, const struct sockaddr *addr, socklen_t addrlen) {
     return 0;
 }
 
+/* send some data over a socket as either a tcp or udp payload */
 int socket_send(int fd, const void *data, size_t data_len, int flags) {
     struct socket_descriptor_t *sock = socket_from_fd(fd);
+
+    if (sock->state != STATE_OUT)
+        return -1;
 
     switch (sock->type) {
         case SOCKET_DGRAM:
@@ -83,6 +88,31 @@ int socket_send(int fd, const void *data, size_t data_len, int flags) {
         case SOCKET_STREAM:
             tcp_send(sock, data, data_len, flags);
     }
+
+    return 0;
+}
+
+/* perform 3-way tcp handshake */
+int socket_connect(int fd, const struct sockaddr *addr, socklen_t len) {
+    const struct sockaddr_in *in_addr = (const struct sockaddr_in *)addr;
+
+    struct socket_descriptor_t *sock = socket_from_fd(fd);
+
+    if (!s)
+        return -1;
+
+    return tcp_connect(sock, in_addr);
+}
+
+/* setup socket to listen for incoming connections */
+int socket_listen(int fd, int backlog) {
+    struct socket_descriptor_t *sock = socket_from_fd(fd);
+
+    if (!sock)
+        return -1;
+
+    sock->state = STATE_LISTENING;
+    sock->tcp.state = LISTEN;
 
     return 0;
 }

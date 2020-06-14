@@ -13,20 +13,22 @@
 
 enum socket_type {
     SOCKET_RAW = 0,
-    SOCKET_STREAM, /* udp */
-    SOCKET_DGRAM, /* tcp */
+    SOCKET_STREAM, /* tcp */
+    SOCKET_DGRAM, /* udp */
 };
 
 enum socket_state {
     STATE_REQ = 0, /* socket created but not yet bound */
     STATE_BOUND, /* socket bound to remote address */
     STATE_OUT,
+    STATE_LISTENING,
 };
 
 enum tcp_state {
     SYN_SENT,
     ESTABLISHED,
     CLOSED,
+    LISTEN,
 };
 
 /* structure that describes all the key info about a socket */
@@ -93,7 +95,7 @@ int socket_new(int, int, int);
 int socket_bind(int, const struct sockaddr *, socklen_t);
 int socket_listen(int, int);
 int socket_accept(int, struct sockaddr *, socklen_t *);
-int socket_conect(int, const struct sockaddr *, socklen_t);
+int socket_connect(int, const struct sockaddr *, socklen_t);
 int socket_send(int, const void *, size_t, int);
 
 public_dynarray_prototype(struct socket_descriptor_t, sockets);

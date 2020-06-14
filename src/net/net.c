@@ -215,7 +215,10 @@ int net_query_mac(ipv4_addr_t addr, mac_addr_t *mac) {
 
 /* net_dispatch_pkt(): send an ipv4 packet */
 int net_dispatch_pkt(struct packet_t *pkt) {
-    /* TODO: check that this is an ip packet */
+    struct ether_hdr *ether = (struct ether_hdr *)pkt->buf;
+    if (HTONS(ether->type) != ETHER_IPV4)
+        return -1;
+
     struct ipv4_hdr_t *ipv4_hdr = (struct ipv4_hdr_t *)(pkt->buf + sizeof(struct ether_hdr));
 
     struct nic_t *nic = NULL;
