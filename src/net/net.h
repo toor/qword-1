@@ -78,7 +78,12 @@ public_dynarray_prototype(struct nic_t *, nics);
 void net_add_nic(struct nic_t *);
 int net_best_nic(ipv4_addr_t, struct nic_t **);
 int net_query_mac(ipv4_addr_t, mac_addr_t *);
+
 int net_dispatch_pkt(struct packet_t *);
+void net_process_pkt(struct packet_t *);
+void net_process_ip(struct packet_t *);
+void net_process_arp(struct packet_t *);
+
 int addr_to_raw(char *);
 char *raw_to_addr(int);
 struct packet_t *pkt_new(void);

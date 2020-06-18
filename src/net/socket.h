@@ -7,6 +7,7 @@
 #include <lib/lock.h>
 #include <lib/event.h>
 #include <net/net.h>
+#include <lib/list.h>
 
 #define PF_INET 2
 #define AF_INET PF_INET
@@ -22,6 +23,7 @@ enum socket_state {
     STATE_BOUND, /* socket bound to remote address */
     STATE_OUT,
     STATE_LISTENING,
+    STATE_IDLE,
 };
 
 enum tcp_state {
@@ -29,6 +31,7 @@ enum tcp_state {
     ESTABLISHED,
     CLOSED,
     LISTEN,
+    SYN_RECEIVED,
 };
 
 /* structure that describes all the key info about a socket */
@@ -59,11 +62,13 @@ struct socket_descriptor_t {
     } tcp;
 
     lock_t socket_lock;
-    event_t *event;
+    event_t event;
 
     /* list of tcp packets to be accepted */
     // TODO how does one create dynarrays in structs ? is it possible ?
     // no it isn't
+    
+    list_t accept_pks;
 
     /* TODO construct queues for udp datagrams, tcp accept() packets, packets to be ack'd, etc. */
     /* should probably figure out how these will be programmed first */

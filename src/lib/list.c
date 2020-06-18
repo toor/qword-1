@@ -28,3 +28,10 @@ void list_push(list_t *l, void *data, size_t len) {
 
     l->head = node;
 }
+
+/* return true if head is non-NULL */
+int list_head(list_t *l) {
+    if (!l->head)
+        return 0;
+    return 1;
+}

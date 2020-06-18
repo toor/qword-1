@@ -16,5 +16,6 @@ typedef struct list {
 void list_init(list_t *);
 void *list_pop(list_t *);
 void list_push(list_t *, void *, size_t);
+int list_head(list_t *);
 
 #endif

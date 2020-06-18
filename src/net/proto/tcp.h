@@ -48,5 +48,6 @@ struct tcp_hdr_t {
 void tcp_new(struct socket_descriptor_t *, struct packet_t *, int, const void *, size_t);
 /* send data over a tcp connection */
 void tcp_send(struct socket_descriptor_t *, const void *, size_t, int);
+int tcp_connect(struct socket_descriptor_t *, const struct sockaddr_in *);
 
 #endif

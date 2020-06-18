@@ -248,3 +248,17 @@ int net_dispatch_pkt(struct packet_t *pkt) {
         return -1;
     }
 }
+
+void net_process_pkt(struct packet_t *pkt) {
+    struct ether_hdr *eth_hdr = (struct ether_hdr *)(pkt->buf);
+
+    switch (eth_hdr->type) {
+        case ETHER_IPV4:
+            net_process_ip(pkt);
+        case ETHER_ARP:
+            net_process_arp(pkt);
+    }
+}
+
+void net_process_ip(struct packet_t *pkt) {}
+void net_process_arp(struct packet_t *pkt) {}

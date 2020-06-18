@@ -2,7 +2,13 @@
 #include <stddef.h>
 #include <net/socket.h>
 #include <lib/dynarray.h>
+#include <lib/list.h>
+#include <lib/lock.h>
+#include <lib/cmem.h>
 #include <net/proto/ipv4.h>
+#include <net/proto/tcp.h>
+#include <net/proto/udp.h>
+#include <net/proto/ether.h>
 
 /* a simple implementation of sockets for handling tcp and udp connections */
 /* provides the follow functions:
@@ -14,11 +20,30 @@
 
 public_dynarray_new(struct socket_descriptor_t, sockets);
 
-static int next(void);
+static int socket_next(void) {
+    int fd = 0;
+
+    struct socket_descriptor_t *sock = dynarray_search(struct socket_descriptor_t, sockets,
+            &fd, !elem->valid, 0);
+
+    if (!sock)
+        return -1;
+
+    return fd;
+}
 
 /* translate fd to the socket descriptor it refers to */
 struct socket_descriptor_t *socket_from_fd(int fd) {
-    return dynarray_search(struct socket_descriptor_t, sockets, &fd, elem->valid, 0);
+    struct socket_descriptor_t *sock = dynarray_getelem(struct socket_descriptor_t,
+            sockets, fd);
+
+    if (!sock) {
+        return NULL;
+    } else if (!sock->valid) {
+        return NULL;
+    } else {
+        return sock;
+    }
 }
 
 /* construct a new socket and return the corresponding file descriptor */
@@ -45,11 +70,14 @@ int socket_new(int domain, int type, int proto) {
             break;
     }
 
+    event_t event = 0;
+
     sock->domain = domain;
     sock->type = type;
     sock->proto = proto;
     sock->state = STATE_REQ;
     sock->socket_lock = new_lock;
+    sock->event = event;
 
     return fd;
 }
@@ -111,6 +139,7 @@ int socket_listen(int fd, int backlog) {
     if (!sock)
         return -1;
 
+    list_init(&sock->accept_pks);
     sock->state = STATE_LISTENING;
     sock->tcp.state = LISTEN;
 
@@ -125,4 +154,69 @@ int socket_accept(int fd, struct sockaddr *addr, socklen_t *len) {
 
     if (sock->type != SOCKET_STREAM)
         return -1;
+
+    spinlock_acquire(&sock->socket_lock);
+
+    struct packet_t *a_pkt;
+    /* wait while queue is empty, queue will be filled
+     * from net_process_pkt */
+    do {
+        event_await(&sock->event);
+    } while (!list_head(&sock->accept_pks));
+
+    a_pkt = (struct packet_t *)list_pop(&sock->accept_pks);
+
+    struct ipv4_hdr_t *ipv4_hdr = (struct ipv4_hdr_t *)(a_pkt->buf + sizeof(struct ether_hdr));
+    struct tcp_hdr_t *tcp_hdr = (struct tcp_hdr_t *)(ipv4_hdr + 4 * ipv4_hdr->head_len);
+
+    /* TODO ensure this is a SYN packet */
+
+    int new_fd = -1;
+    /* construct socket to send ACK to */
+    struct socket_descriptor_t *ack_sock = dynarray_search(struct socket_descriptor_t,
+            sockets, &new_fd, !elem->valid, 0);
+    if (!ack_sock)
+        return -1;
+    ack_sock->valid = 1;
+
+    memcpy(ack_sock, sock, sizeof(struct socket_descriptor_t));
+    ack_sock->socket_lock = new_lock;
+
+    /* swap dest and src */
+    ack_sock->state = STATE_OUT;
+    ack_sock->tcp.state = SYN_RECEIVED;
+    ack_sock->ip.dest_ip = ipv4_hdr->src;
+    ack_sock->ip.dest_port = tcp_hdr->source;
+    ack_sock->tcp.recv_sq = NTOHL(tcp_hdr->seq_num);
+
+    if (!ack_sock->ip.source_ip)
+        /* TODO i can't remember where we actually initialise the NIC */
+        ack_sock->ip.source_ip = a_pkt->nic->ipv4_addr.raw;
+
+    /* point `addr` to address of peer socket */
+    struct sockaddr_in in_addr = {
+        .sin_len = AF_INET,
+        .sin_port = ack_sock->ip.dest_port,
+        .sin_addr = {ack_sock->ip.dest_ip},
+    };
+
+    memcpy(addr, &in_addr, sizeof(in_addr));
+    *len = sizeof(in_addr);
+
+    tcp_send(ack_sock, NULL, 0, TCP_SYN | TCP_ACK);
+    spinlock_release(&sock->socket_lock);
+
+    return new_fd;
+}
+
+int socket_close(int fd) {
+    struct socket_descriptor_t *sock = socket_from_fd(fd);
+
+    if (!sock)
+        return -1;
+
+    sock->state = STATE_IDLE;
+    sock->valid = 0;
+
+    return 0;
 }

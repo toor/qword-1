@@ -97,6 +97,7 @@ static void process_received_packets(struct r81x9_device_t* dev) {
         struct packet_t pkt = {
             .buf = (char *)buf,
             .pkt_len = len,
+            .nic = &dev->nic,
         };
 
         // let the network stack handle it
