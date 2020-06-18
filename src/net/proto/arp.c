@@ -4,7 +4,7 @@
 #include <net/netstack.h>
 #include <lib/klib.h>
 #include <lib/errno.h>
-#include "arp.h"
+#include <net/proto/arp.h>
 
 /* TODO this naming is stupid, why have 3 structs instead of just one */
 struct ipv4_arp_packet_t {

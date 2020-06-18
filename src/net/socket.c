@@ -98,7 +98,7 @@ int socket_connect(int fd, const struct sockaddr *addr, socklen_t len) {
 
     struct socket_descriptor_t *sock = socket_from_fd(fd);
 
-    if (!s)
+    if (!sock)
         return -1;
 
     return tcp_connect(sock, in_addr);
@@ -115,4 +115,14 @@ int socket_listen(int fd, int backlog) {
     sock->tcp.state = LISTEN;
 
     return 0;
+}
+
+int socket_accept(int fd, struct sockaddr *addr, socklen_t *len) {
+    struct socket_descriptor_t *sock = socket_from_fd(fd);
+
+    if (!sock)
+        return -1;
+
+    if (sock->type != SOCKET_STREAM)
+        return -1;
 }
