@@ -67,7 +67,7 @@ struct socket_descriptor_t {
     /* list of tcp packets to be accepted */
     // TODO how does one create dynarrays in structs ? is it possible ?
     // no it isn't
-    
+
     list_t accept_pks;
     list_t udp_dgrams;
 
@@ -106,6 +106,9 @@ int socket_connect(int, const struct sockaddr *, socklen_t);
 int socket_send(int, const void *, size_t, int);
 int socket_sendto(int, const void *, size_t, int, const struct sockaddr *, socklen_t);
 ssize_t socket_recvfrom(int, void *, size_t, int, struct sockaddr *, socklen_t *);
+int socket_best_match(struct packet_t *);
+
+void process_udp(struct packet_t *);
 
 public_dynarray_prototype(struct socket_descriptor_t, sockets);
 

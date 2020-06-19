@@ -1,14 +1,17 @@
 #include <stdint.h>
 #include <stddef.h>
+#include <stdbool.h>
 #include <net/net.h>
 #include <net/proto/ether.h>
 #include <net/proto/ipv4.h>
 #include <net/proto/arp.h>
 #include <net/proto/udp.h>
 #include <net/proto/tcp.h>
+#include <net/socket.h>
 #include <sys/panic.h>
 #include <lib/cmem.h>
 #include <lib/klib.h>
+#include <lib/dynarray.h>
 
 public_dynarray_new(struct nic_t *, nics);
 
@@ -260,5 +263,14 @@ void net_process_pkt(struct packet_t *pkt) {
     }
 }
 
-void net_process_ip(struct packet_t *pkt) {}
+void net_process_ip(struct packet_t *pkt) {
+    struct ipv4_hdr_t *ipv4_hdr = (struct ipv4_hdr *)(pkt->buf + sizeof(struct ether_hdr));
+
+    switch (ipv4_hdr->protocol) {
+        case PROTO_UDP:
+            process_udp(pkt);
+        default:
+            kprint(KPRN_WARN, "net: net_process_pkt: Reached unimplemented code, dropping...");
+    }
+}
 void net_process_arp(struct packet_t *pkt) {}

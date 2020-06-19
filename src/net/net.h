@@ -84,6 +84,7 @@ void net_process_pkt(struct packet_t *);
 void net_process_ip(struct packet_t *);
 void net_process_arp(struct packet_t *);
 
+int socket_best_match(struct packet_t *);
 int addr_to_raw(char *);
 char *raw_to_addr(int);
 struct packet_t *pkt_new(void);

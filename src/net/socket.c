@@ -21,15 +21,30 @@
 
 public_dynarray_new(struct socket_descriptor_t, sockets);
 
-static int socket_next(void) {
-    int fd = 0;
+/* find the best socket to dispatch a packet to */
+int socket_best_match(struct packet_t *pkt) {
+    int fd = -1;
 
-    struct socket_descriptor_t *sock = dynarray_search(struct socket_descriptor_t, sockets,
-            &fd, !elem->valid, 0);
+    struct ipv4_hdr_t *ipv4_hdr = (struct ipv4_hdr_t *)(pkt->buf + sizeof(struct ether_hdr));
+    struct udp_hdr_t *udp_hdr = (struct udp_hdr_t *)(ipv4_hdr + 4 * ipv4_hdr->head_len);
 
+    struct socket_descriptor_t *sock = dynarray_search(struct socket_descriptor_t,
+            sockets, &fd, (elem->state = STATE_OUT && elem->valid && (elem->domain == AF_INET)
+                && (elem->type == SOCKET_STREAM)
+                && (elem->proto == PROTO_UDP)
+                && (elem->ip.source_ip == ipv4_hdr->dst)
+                && (elem->ip.dest_port == udp_hdr->dst_port)
+                && (elem->ip.dest_ip == ipv4_hdr->src) // outbound-specific
+                && (elem->ip.dest_port == udp_hdr->src_port))
+                ||  (elem->state = STATE_LISTENING
+                && (elem->domain == AF_INET)
+                && (elem->type == SOCKET_STREAM)
+                && (elem->proto == PROTO_UDP)
+                && (elem->ip.source_ip == ipv4_hdr->dst)
+                && (elem->ip.source_ip == 0) // listening specific
+                && (elem->ip.dest_port == udp_hdr->dst_port)), 0);
     if (!sock)
         return -1;
-
     return fd;
 }
 
@@ -191,7 +206,6 @@ int socket_accept(int fd, struct sockaddr *addr, socklen_t *len) {
     ack_sock->tcp.recv_sq = NTOHL(tcp_hdr->seq_num);
 
     if (!ack_sock->ip.source_ip)
-        /* TODO i can't remember where we actually initialise the NIC */
         ack_sock->ip.source_ip = a_pkt->nic->ipv4_addr.raw;
 
     /* point `addr` to address of peer socket */
@@ -260,7 +274,7 @@ ssize_t socket_recvfrom(int fd, void *buf, size_t len, int flags,
     memcpy(buf, data, len);
     spinlock_release(&sock->socket_lock);
 
-    return 0;
+    return len;
 }
 
 int socket_sendto(int fd, const void *buf, size_t len, int flags, const struct sockaddr *addr,
@@ -280,10 +294,25 @@ int socket_sendto(int fd, const void *buf, size_t len, int flags, const struct s
             udp_sendto(sock, addr, buf, len); /* TODO flags */
             return 0;
         default:
-            kprint(KPRN_WARN, "sendto called with socket of type != SOCK_DGRAM. sendto on streams currently unimplemented");
+            kprint(KPRN_WARN, "net: sendto: sendto called with socket of type != SOCK_DGRAM. sendto on streams currently unimplemented");
             return -1;
     }
 }
 
-/* TODO: implement udp dispatch to socket in the netstack,
- * then can test udp sockets properly. */
+/* trigger socket to process incoming packet */
+void process_udp(struct packet_t *pkt) {
+    int fd = socket_best_match(pkt);
+
+    if (fd < 0) {
+        kprint(KPRN_WARN, "net: udp: No matching socket found for incoming packet, dropping...");
+        return;
+    }
+
+    struct socket_descriptor_t *sock = dynarray_getelem(struct socket_descriptor_t, sockets, fd);
+
+    list_push(&sock->udp_dgrams, (void *)pkt, sizeof(pkt));
+
+    spinlock_acquire(&sock->socket_lock);
+    event_trigger(&sock->event);
+    spinlock_release(&sock->socket_lock);
+}
