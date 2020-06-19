@@ -7,7 +7,8 @@
 #include <net/socket.h>
 #include <lib/cmem.h>
 
-void udp_new(struct socket_descriptor_t *sock, struct packet_t *pkt, const void *data, size_t data_len) {
+void udp_new(struct socket_descriptor_t *sock, struct packet_t *pkt,
+        struct sockaddr_in *in_addr, const void *data, size_t data_len) {
     struct ether_hdr *ether = (struct ether_hdr *)pkt->buf;
     ether->type = ETHER_IPV4;
 
@@ -25,7 +26,7 @@ void udp_new(struct socket_descriptor_t *sock, struct packet_t *pkt, const void 
     ipv4_hdr->frag_flag = HTONS(IPV4_HEAD_DF_MASK);
     ipv4_hdr->ttl = 64;
     ipv4_hdr->src = sock->ip.source_ip;
-    ipv4_hdr->dst = sock->ip.dest_ip;
+    ipv4_hdr->dst = !sock->ip.dest_ip ? in_addr->sin_addr.s_addr : sock->ip.dest_ip;
 
     struct udp_hdr_t *udp = (struct udp_hdr_t *)((void *)ipv4_hdr + ipv4_hdr->head_len * 4);
     udp->dst_port = HTONS(sock->ip.dest_port);
@@ -43,9 +44,23 @@ void udp_new(struct socket_descriptor_t *sock, struct packet_t *pkt, const void 
 }
 
 void udp_send(struct socket_descriptor_t *sock, const void *data, size_t len) {
+    if (!sock->ip.dest_ip)
+        return;
+
     struct packet_t *pkt = pkt_new();
 
-    udp_new(sock, pkt, data, len);
+    udp_new(sock, pkt, NULL, data, len);
+    net_dispatch_pkt(pkt);
+    pkt_free(pkt);
+
+    sock->ip.ipid += 1;
+}
+
+void udp_sendto(struct socket_descriptor_t *sock, struct sockaddr_in *destaddr, const void *data,
+        size_t len) {
+    struct packet_t *pkt = pkt_new();
+
+    udp_new(sock, pkt, destaddr, data, len);
     net_dispatch_pkt(pkt);
     pkt_free(pkt);
 

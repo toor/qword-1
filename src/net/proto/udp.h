@@ -14,8 +14,11 @@ struct udp_hdr_t {
 } __attribute__((packed));
 
 /* construct a new packet to send over UDP */
-void udp_new(struct socket_descriptor_t *, struct packet_t *, const void *, size_t);
+void udp_new(struct socket_descriptor_t *, struct packet_t *,
+        struct sockaddr_in *, const void *, size_t);
 /* send some data over udp */
 void udp_send(struct socket_descriptor_t *, const void *, size_t);
+void udp_sendto(struct socket_descriptor_t *, struct sockaddr_in *,
+        const void *, size_t);
 
 #endif //__NET_PROTO__UDP_H__

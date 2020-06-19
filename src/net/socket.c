@@ -5,13 +5,14 @@
 #include <lib/list.h>
 #include <lib/lock.h>
 #include <lib/cmem.h>
+#include <lib/klib.h>
 #include <net/proto/ipv4.h>
 #include <net/proto/tcp.h>
 #include <net/proto/udp.h>
 #include <net/proto/ether.h>
 
 /* a simple implementation of sockets for handling tcp and udp connections */
-/* provides the follow functions:
+/* provides the following functions:
  * int socket_connect(): Allows establishing a connection to a specific remote host
  * int socket_accept(): Accept incoming TCP or UDP connection
  * int socket_listen(): Setup socket to begin listening for incoming connections
@@ -220,3 +221,69 @@ int socket_close(int fd) {
 
     return 0;
 }
+
+ssize_t socket_recvfrom(int fd, void *buf, size_t len, int flags,
+        struct sockaddr *sockaddr, socklen_t *addrlen) {
+    struct socket_descriptor_t *sock = socket_from_fd(fd);
+    if (!sock)
+        return -1;
+
+    spinlock_acquire(&sock->socket_lock);
+
+    struct packet_t *r_pkt;
+    do {
+        event_await(&sock->event);
+    } while (!list_head(&sock->udp_dgrams));
+
+    r_pkt = (struct packet_t *)list_pop(&sock->udp_dgrams);
+
+    struct ipv4_hdr_t *ipv4_hdr = (struct ipv4_hdr *)(r_pkt->buf + sizeof(struct ether_hdr));
+    struct udp_hdr_t *udp_hdr = (struct udp_hdr_t *)(ipv4_hdr + 4 * ipv4_hdr->head_len);
+    void *data = udp_hdr->data;
+    int udp_data_len = NTOHS(ipv4_hdr->total_len) - sizeof(struct ipv4_hdr_t) - sizeof(struct udp_hdr_t);
+
+
+    /* point `addr` to address of peer socket */
+    struct sockaddr_in *in_addr = (struct sockaddr_in *)sockaddr;
+
+    if (*addrlen < sizeof(*in_addr))
+        return -1;
+
+    in_addr->sin_family = AF_INET;
+    in_addr->sin_port = udp_hdr->src_port;
+    in_addr->sin_addr.s_addr = ipv4_hdr->src;
+    *addrlen = (socklen_t)sizeof(in_addr);
+
+    if (len < udp_data_len)
+        len = udp_data_len;
+
+    memcpy(buf, data, len);
+    spinlock_release(&sock->socket_lock);
+
+    return 0;
+}
+
+int socket_sendto(int fd, const void *buf, size_t len, int flags, const struct sockaddr *addr,
+        socklen_t addrlen) {
+    struct socket_descriptor_t *sock = socket_from_fd(fd);
+
+    if (!sock)
+       return -1;
+
+    struct sockaddr_in *in_addr;
+
+    switch (sock->type) {
+        case SOCKET_DGRAM:
+            in_addr = (struct sockaddr_in *)addr;
+            if (addrlen != sizeof(*in_addr))
+                return -1;
+            udp_sendto(sock, addr, buf, len); /* TODO flags */
+            return 0;
+        default:
+            kprint(KPRN_WARN, "sendto called with socket of type != SOCK_DGRAM. sendto on streams currently unimplemented");
+            return -1;
+    }
+}
+
+/* TODO: implement udp dispatch to socket in the netstack,
+ * then can test udp sockets properly. */

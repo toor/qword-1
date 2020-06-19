@@ -69,6 +69,7 @@ struct socket_descriptor_t {
     // no it isn't
     
     list_t accept_pks;
+    list_t udp_dgrams;
 
     /* TODO construct queues for udp datagrams, tcp accept() packets, packets to be ack'd, etc. */
     /* should probably figure out how these will be programmed first */
@@ -101,7 +102,10 @@ int socket_bind(int, const struct sockaddr *, socklen_t);
 int socket_listen(int, int);
 int socket_accept(int, struct sockaddr *, socklen_t *);
 int socket_connect(int, const struct sockaddr *, socklen_t);
+
 int socket_send(int, const void *, size_t, int);
+int socket_sendto(int, const void *, size_t, int, const struct sockaddr *, socklen_t);
+ssize_t socket_recvfrom(int, void *, size_t, int, struct sockaddr *, socklen_t *);
 
 public_dynarray_prototype(struct socket_descriptor_t, sockets);
 
