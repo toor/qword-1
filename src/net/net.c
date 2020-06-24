@@ -273,4 +273,5 @@ void net_process_ip(struct packet_t *pkt) {
             kprint(KPRN_WARN, "net: net_process_pkt: Reached unimplemented code, dropping...");
     }
 }
+
 void net_process_arp(struct packet_t *pkt) {}

@@ -17,6 +17,7 @@
 #include <sys/hpet.h>
 #include <lib/cstring.h>
 #include <lib/cmem.h>
+#include <net/socket.h>
 
 static inline int privilege_check(size_t base, size_t len) {
     if ( base & (size_t)0x800000000000
@@ -1294,4 +1295,58 @@ int syscall_mount(struct regs_t *regs) {
     // r8: data
     return mount((char*)regs->rdi, (char *)regs->rsi, (char *)regs->rdx,
         regs->r10, (void *)regs->r8);
+}
+
+int syscall_socket(struct regs_t *regs) {
+    // rdi: family
+    // rsi: type
+    // rdx: type
+    return socket_new((int)regs->rdi, (int)regs->rsi, (int)regs->rdx);
+}
+
+int syscall_bind(struct regs_t *regs) {
+    // rdi: fd
+    // rsi: address
+    // rdx: addrlen
+    const struct sockaddr *addr = (const struct sockaddr *)(void *)regs->rsi;
+    socklen_t addrlen = (socklen_t)regs->rdx;
+
+    return socket_bind((int)regs->rdi, addr, addrlen);
+}
+
+int syscall_sendto(struct regs_t *regs) {
+    // rdi: fd
+    // rsi: buffer
+    // rdx: buffer length
+    // rcx: flags
+    // r8: addr
+    // r9: addrlen
+    return socket_sendto((int)regs->rdi,
+            (const void *)regs->rsi,
+            (size_t)regs->rdx,
+            (int)regs->rcx,
+            (const struct sockaddr * )(void *)regs->r8,
+            (socklen_t)regs->r9);
+}
+
+int syscall_send(struct regs_t *regs) {
+    return 0;
+}
+
+int syscall_recvfrom(struct regs_t *regs) {
+    // rdi: fd
+    // rsi: buffer
+    // rdx: buffer length
+    // r10: sockaddr
+    // r8: addrlen
+    return socket_recvfrom((int)regs->rdi,
+            (void *)regs->rsi,
+            (size_t)regs->rdx,
+            (int)regs->rcx,
+            (struct sockaddr *)(void *)regs->r10,
+            (socklen_t *)(void *)regs->r8);
+}
+
+int syscall_recv(struct regs_t *regs) {
+    return 0;
 }

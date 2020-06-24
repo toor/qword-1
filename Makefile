@@ -30,7 +30,7 @@ QEMU    = qemu-system-x86_64
 
 CFLAGS    = -O2 -pipe -Wall -Wextra
 LDFLAGS   = -O2
-QEMUFLAGS = -m 2G -enable-kvm -smp 4
+QEMUFLAGS = -m 2G -enable-kvm -smp 4 -netdev tap,id=mynet0,ifname=tap0,script=no,downscript=no,net=0x123456 -device rtl8139,netdev=mynet0
 
 # Flags for compilation.
 BUILD_TIME := $(shell date)

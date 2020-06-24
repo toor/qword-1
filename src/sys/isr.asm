@@ -359,6 +359,18 @@ syscall_table:
     dq syscall_umount ;42
     extern syscall_poll
     dq syscall_poll ;43
+    extern syscall_socket
+    dq syscall_socket ;44
+    extern syscall_bind
+    dq syscall_bind ;45
+    extern syscall_sendto
+    dq syscall_sendto ;46
+    extern syscall_recvfrom
+    dq syscall_recvfrom ;47
+    extern syscall_recv
+    dq syscall_recv ;48
+    extern syscall_send
+    dq syscall_send ;49
   .end:
 
 section .text
